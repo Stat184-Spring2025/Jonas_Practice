@@ -1,0 +1,278 @@
+---
+title: "activity #10"
+author: "Jonas Priolo"
+date: 4/13/2025
+format: pdf
+---
+
+## Question 3: US Army Data Set
+
+```{r}
+#load packages
+library(tidyverse)
+library(tidyr)
+library(janitor)
+```
+
+**Plan**
+
+**Goal:** Create/improve the the code from activity #6. Clean the raw military data and make it be able to run on any computer nativly. Create a lookup table that provides the full rank title for each branch in the US Military.
+
+**Needs**: Tidyverse, Tidyr, Janitor, Raw data source (US armed forces data uploaded to my github), We will also need verbs such as importing/reading, scraping, renaming, reshaping (covering pivoting and uncounting), and combining (joining).
+
+**Instructions:**
+
+1.  Load Packagaes
+2.  Scrape the pay grade and rank table
+3.  
+
+## Running Code
+
+```{r}
+
+# Tidy Armed forces data
+# Two Data Frames: 1 with case as group of soliders
+## 1 with case as individual solider
+## Both need to have ranks
+
+
+
+military_raw <-  read.csv(
+  "https://raw.githubusercontent.com/JomHacks/R-Military-Data/refs/heads/main/US%20Armed%20Forces%20(6_2024)%20-%20Sheet1%20(1).csv",
+  sep = ",",
+  skip = 2
+)
+
+View(military_raw)
+
+military_clean <-  military_raw %>% #Renames the raw values into readable label names
+  rename(
+    payGrade = Pay.Grade,
+    
+    male_army = Male,
+    female_army= Female,
+    total_army = Total,
+    male_navy = Male.1,
+    female_navy = Female.1,
+    total_navy = Total.1,
+    male_marine = Male.2,
+    female_marine = Female.2,
+    total_marine = Total.2,
+    male_air = Male.3,
+    female_air = Female.3,
+    air_total = Total.3,
+    male_space = Male.4,
+    female_space = Female.4,
+    space_total = Total.4,
+    total_male = Male.5,
+    total_female = Female.5,
+    total = Total.5
+  )%>%
+  dplyr::select( #selects everything except for the total values, they are irrelevent in this sennerio
+    payGrade,
+    male_army,
+    female_army,
+    male_navy,
+    female_navy,
+    male_marine,
+    female_marine,
+    male_air,
+    female_air,
+    male_space,
+    female_space
+    
+  )%>%
+  
+  filter(payGrade != "Total Enlisted") %>% #filters out the extra total lines
+  filter(payGrade != "Total Officers") %>%
+  filter(payGrade != "Total Warrant Officers") %>%
+  filter(row_number() < 25
+         )%>%
+  pivot_longer( #pivots along pay grade  so that each case has its own row
+    cols = -payGrade,
+    names_to = "Sex",
+    values_to = "Num_of_Personel"
+  )%>%
+  
+  separate_wider_delim( #seperates the gender of the personel and there branch
+    cols = Sex,
+    delim = "_",
+    names = c("sex", "Branch")
+  )%>%
+  mutate(
+    Num_of_Personel  = readr::parse_number(Num_of_Personel, na = c(","))#removes the , in certain num of personel so that it can be converted as an intiger
+  )%>%
+  mutate(Num_of_Personel = as.integer(Num_of_Personel))%>% #converts num of personell to intigers
+  replace_na(list(Num_of_Personel = 0))%>%
+  
+  mutate(#renames branch vals
+    Branch = case_when(
+      Branch == "air" ~ "Air Force",
+      Branch == "army" ~ "Army",
+      Branch == "navy" ~ "Navy",
+      Branch == "space" ~ "Space Force",
+      Branch == "marine" ~ "Marine Corps"
+    )
+  )
+
+View(military_clean)
+
+
+rank_lookup <- tribble(
+  ~payGrade, ~Branch, ~RankTitle,
+  # Enlisted Ranks (E1–E9)
+  "E1", "Army", "Private",
+  "E1", "Navy", "Seaman Recruit",
+  "E1", "Marine Corps", "Private",
+  "E1", "Air Force", "Airman Basic",
+  "E1", "Space Force", "Specialist 1",
+  
+  "E2", "Army", "Private",
+  "E2", "Navy", "Seaman Apprentice",
+  "E2", "Marine Corps", "Private First Class",
+  "E2", "Air Force", "Airman",
+  "E2", "Space Force", "Specialist 2",
+  
+  "E3", "Army", "Private First Class",
+  "E3", "Navy", "Seaman",
+  "E3", "Marine Corps", "Lance Corporal",
+  "E3", "Air Force", "Airman First Class",
+  "E3", "Space Force", "Specialist 3",
+  
+  "E4", "Army", "Corporal OR Specialist",
+  "E4", "Navy", "Petty Officer Third Class",
+  "E4", "Marine Corps", "Corporal",
+  "E4", "Air Force", "Senior Airman",
+  "E4", "Space Force", "Specialist 4",
+  
+  "E5", "Army", "Sergeant",
+  "E5", "Navy", "Petty Officer Second Class",
+  "E5", "Marine Corps", "Sergeant",
+  "E5", "Air Force", "Staff Sergeant",
+  "E5", "Space Force", "Sergeant",
+  
+  "E6", "Army", "Staff Sergeant",
+  "E6", "Navy", "Petty Officer First Class",
+  "E6", "Marine Corps", "Staff Sergeant",
+  "E6", "Air Force", "Technical Sergeant",
+  "E6", "Space Force", "Technical Sergeant",
+  
+  "E7", "Army", "Sergeant First Class",
+  "E7", "Navy", "Chief Petty Officer",
+  "E7", "Marine Corps", "Gunnery Sergeant",
+  "E7", "Air Force", "Master Sergeant OR First Sergeant",
+  "E7", "Space Force", "Master Sergeant",
+  
+  "E8", "Army", "First Sergeant OR Master Sergeant",
+  "E8", "Navy", "Senior Chief Petty Officer",
+  "E8", "Marine Corps", "First Sergeant OR Master Sergeant",
+  "E8", "Air Force", "Senior Master Sergeant OR First Sergeant",
+  "E8", "Space Force", "Senior Master Sergeant",
+  
+  "E9", "Army", "Sergeant Major OR Command Sergeant Major",
+  "E9", "Navy", "Master Chief Petty Officer OR Fleet/Command Master Chief Petty Officer",
+  "E9", "Marine Corps", "Sergeant Major OR Master Gunnery Sergeant",
+  "E9", "Air Force", "Chief Master Sergeant OR First Sergeant",
+  "E9", "Space Force", "Chief Master Sergeant",
+  
+  # Warrant Officers (W1–W5)
+  "W1", "Army", "Warrant Officer",
+  "W1", "Navy", "Warrant Officer",
+  "W1", "Marine Corps", "Warrant Officer",
+  
+  "W2", "Army", "Chief Warrant Officer",
+  "W2", "Navy", "Chief Warrant Officer",
+  "W2", "Marine Corps", "Chief Warrant Officer",
+
+  
+  "W3", "Army", "Chief Warrant Officer",
+  "W3", "Navy", "Chief Warrant Officer",
+  "W3", "Marine Corps", "Chief Warrant Officer",
+
+  
+  "W4", "Army", "Chief Warrant Officer",
+  "W4", "Navy", "Chief Warrant Officer",
+  "W4", "Marine Corps", "Chief Warrant Officer",
+
+  
+  "W5", "Army", "Chief Warrant Officer",
+  "W5", "Navy", "Chief Warrant Officer",
+  "W5", "Marine Corps", "Chief Warrant Officer",
+  
+  # Commissioned Officers (O1–O10)
+  "O1", "Army", "Second Lieutenant",
+  "O1", "Navy", "Ensign",
+  "O1", "Marine Corps", "Second Lieutenant",
+  "O1", "Air Force", "Second Lieutenant",
+  "O1", "Space Force", "Second Lieutenant",
+  
+  "O2", "Army", "First Lieutenant",
+  "O2", "Navy", "Lieutenant Junior Grade",
+  "O2", "Marine Corps", "First Lieutenant",
+  "O2", "Air Force", "First Lieutenant",
+  "O2", "Space Force", "First Lieutenant",
+  
+  "O3", "Army", "Captain",
+  "O3", "Navy", "Lieutenant",
+  "O3", "Marine Corps", "Captain",
+  "O3", "Air Force", "Captain",
+  "O3", "Space Force", "Captain",
+  
+  "O4", "Army", "Major",
+  "O4", "Navy", "Lieutenant Commander",
+  "O4", "Marine Corps", "Major",
+  "O4", "Air Force", "Major",
+  "O4", "Space Force", "Major",
+  
+  "O5", "Army", "Lieutenant Colonel",
+  "O5", "Navy", "Commander",
+  "O5", "Marine Corps", "Lieutenant Colonel",
+  "O5", "Air Force", "Lieutenant Colonel",
+  "O5", "Space Force", "Lieutenant Colonel",
+  
+  "O6", "Army", "Colonel",
+  "O6", "Navy", "Captain",
+  "O6", "Marine Corps", "Colonel",
+  "O6", "Air Force", "Colonel",
+  "O6", "Space Force", "Colonel",
+  
+  "O7", "Army", "Brigadier General",
+  "O7", "Navy", "Rear Admiral (Lower Half)",
+  "O7", "Marine Corps", "Brigadier General",
+  "O7", "Air Force", "Brigadier General",
+  "O7", "Space Force", "Brigadier General",
+  
+  "O8", "Army", "Major General",
+  "O8", "Navy", "Rear Admiral (Upper Half)",
+  "O8", "Marine Corps", "Major General",
+  "O8", "Air Force", "Major General",
+  "O8", "Space Force", "Major General",
+  
+  "O9", "Army", "Lieutenant General",
+  "O9", "Navy", "Vice Admiral",
+  "O9", "Marine Corps", "Lieutenant General",
+  "O9", "Air Force", "Lieutenant General",
+  "O9", "Space Force", "Lieutenant General",
+  
+  "O10", "Army", "General",
+  "O10", "Navy", "Admiral",
+  "O10", "Marine Corps", "General",
+  "O10", "Air Force", "General",
+  "O10", "Space Force", "General"
+)
+
+
+military_final <- military_clean %>%
+  left_join(rank_lookup, by = c("payGrade", "Branch"))
+
+# View the cleaned and enriched dataset
+View(military_final)
+
+individualRanks <- military_final %>%
+  filter(!is.na(Num_of_Personel)) %>% # Remove all cases with missing counts
+  uncount(
+    weights = Num_of_Personel
+  )
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
